@@ -1,0 +1,11 @@
+body {
+  background-color: black;
+  color: white;
+}
+
+.error {
+    background: url('error.gif');
+    width: 652px;
+    height: 93px;
+    display: inline-block;
+}
