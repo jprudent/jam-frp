@@ -20,12 +20,12 @@
    :body "ca faisait longtemps que tu n'avais pas eu d'erreur 500,
    ne t'inquiete pas, on ne t'a pas oublie :)"})
 
-(defn- should-fail? [] (= 0 (rand-int 2)))
+(defn- should-fail? [] (= 0 (rand-int 4)))
 
-(defn app-handler [{:uri uri}]
+(defn app-handler [request]
   (cond
     (should-fail?) err-500 ; random failure, shit happens!
-    (= "/countries" uri) (response services.countries/countries)
+    (= "/countries" (:uri request)) (response services.countries/countries)
     :else (err-404 api-documentation)))
 
 (def app (-> app-handler

@@ -3,10 +3,6 @@ var URL = {
     'countries' : 'http://localhost:3000/countries'
 };
 
-// pratique !
-function always(v){
-  return function(){return v};
-}
 
 
 // --
@@ -16,11 +12,10 @@ function always(v){
 var ajaxCountries = Bacon.fromPromise($.ajax(URL.countries)); // creation d'un event stream à partir de la requête ajax
 
 var isAjaxError = ajaxCountries
-  .map(always(false)) // en cas de succes : pas de message d'erreur
-  .mapError(always(true)) // en cas d'erreur : message d'erreur
+  .map(false) // en cas de succes : pas de message d'erreur
+  .mapError(true) // en cas d'erreur : message d'erreur
   .toProperty(false) // convertit en Property pour avoir une valeur initiale
   .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
-
 
 
 // --
