@@ -23,6 +23,7 @@
 (defn- should-fail? [] (= 0 (rand-int 4)))
 
 (defn app-handler [request]
+  (java.lang.Thread/sleep 2000)
   (cond
     (should-fail?) err-500 ; random failure, shit happens!
     (= "/countries" (:uri request)) (response services.countries/countries)
