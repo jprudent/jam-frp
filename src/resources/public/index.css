@@ -9,3 +9,10 @@ body {
     height: 93px;
     display: inline-block;
 }
+
+.spinner {
+    background: url('spinner.gif');
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+}
