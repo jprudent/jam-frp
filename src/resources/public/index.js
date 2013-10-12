@@ -17,12 +17,25 @@ var isError = function(v){
   return v === "ERROR";
 };
 
+var not = function(f){
+  return function(v){ return !f(v) };
+};
+
 var isAjaxError = ajaxCountries
   .map(isError)
   .toProperty(false) // convertit en Property pour avoir une valeur initiale
   .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
 
 var showAjaxSpinner = isAjaxError.awaiting(ajaxCountries);
+
+var showCountryInput = ajaxCountries
+  .map(not(isError))
+  .toProperty(false)
+  .skipDuplicates();
+
+var gotCountriesList = ajaxCountries
+  .filter(not(isError));
+
 
 // --
 // -- side effects
@@ -46,3 +59,18 @@ var showOrHideSpinner = function(show) {
 };
 
 showAjaxSpinner.onValue(showOrHideSpinner);
+
+var showOrHideInputCountry = function(show){
+   console.log("show country input", show);
+  showOrHide(show, $("[name='country']"));
+}
+
+showCountryInput.onValue(showOrHideInputCountry);
+
+var fillCountries = function(countries){
+  for(var countryCode in countries){
+    $("#countries").append('<option value="'+ countries[countryCode] +'">' + countryCode + '</option>');
+  }
+};
+
+gotCountriesList.onValue(fillCountries);
