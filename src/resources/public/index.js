@@ -1,4 +1,4 @@
-var countryDefinitions = function() {
+(function() {
 
   console.log("*** Strarting country definitions ***")
 
@@ -9,7 +9,9 @@ var countryDefinitions = function() {
 
   var $S = {
     country : $('input[name="country"]'),
-    countryHelp : $("#help_country")
+    countryHelp : $("#help_country"),
+    zipCode : $('input[name="zipCode"]'),
+    zipCodeHelp : $("#help_zipCode")
   }
 
 
@@ -43,17 +45,29 @@ var countryDefinitions = function() {
   var countriesList = ajaxCountries
     .filter(not(isError));
 
-  var inputCountry = $S.country.asEventStream("keyup")
+  var inputCountry = $S.country.asEventStream("input")
     .map(function(event){
       return $(event.target).val();
-    });
+    })
+    .toProperty($S.country.val()); // default value.
 
-  var invalidCountry = inputCountry
+  var isInvalidCountry = inputCountry
     .combine(countriesList, function(input, countries){
       for(var countryCode in countries){
          if(input === countries[countryCode]) return false;
       }
       return true;
+    });
+
+  var countryCode = inputCountry
+    .combine(countriesList, function(input,countries){
+      for(var countryCode in countries){
+         if(input === countries[countryCode]) return countryCode;
+      }
+      return null;
+    })
+    .filter(function(v){
+      return v !== null;
     });
 
 
@@ -67,38 +81,58 @@ var countryDefinitions = function() {
   };
 
   var showOrHideErrorMessage = function(show) {
-    console.log("showError = ", show);
     showOrHide(show, $(".error"));
   };
 
   isErrorAjaxCountries.onValue(showOrHideErrorMessage);
 
   var showOrHideSpinner = function(show) {
-    console.log("showSpinner = ", show)
     showOrHide(show, $(".spinner"));
   };
 
   isOngoingAjaxCountries.onValue(showOrHideSpinner);
 
   var showOrHideInputCountry = function(show){
-     console.log("show country input", show);
     showOrHide(show, $S.country);
-  }
+  };
 
   var showOrHideHelpCountry = function(show){
-    console.log("invalidCountry",show);
     showOrHide(show, $S.countryHelp);
-  }
+  };
 
-  var doFn = function(f1,f2){
-    return function(value){
-      f1(value);
-      f2(value);
+  var showOrHideInputZipCode = function(show){
+    showOrHide(show, $S.zipCode);
+    if(show){
+      $S.zipCode.focus();
     }
-  }
+  };
+
+  var hideOrShowInputZipCode = function(hide){
+    showOrHideInputZipCode(!hide);
+  };
+
+  var showOrHideHelpZipCode = function(show){
+    showOrHide(show, $S.zipCodeHelp);
+  };
+
+  var hideOrShowHelpZipCode = function(hide){
+    showOrHideHelpZipCode(!hide);
+  };
+
+  // take a variable number of one arg functions and construct a one arg function that calls all those functions
+  // used to bulk function in one
+  var doFn = function(){
+    var fns = arguments;
+    return function(value){
+      for(var i = 0; i<fns.length; i++){
+        fns[i](value);
+      }
+    }
+  };
 
   isDoneAjaxCountries
-    .onValue(doFn(showOrHideInputCountry, showOrHideHelpCountry));
+    .onValue(doFn(showOrHideInputCountry, showOrHideHelpCountry,
+                  showOrHideInputZipCode, showOrHideHelpZipCode));
 
   var fillCountries = function(countries){
     for(var countryCode in countries){
@@ -108,9 +142,11 @@ var countryDefinitions = function() {
 
   countriesList.onValue(fillCountries);
 
-  invalidCountry.onValue(showOrHideHelpCountry);
+  isInvalidCountry.onValue(doFn(showOrHideHelpCountry,
+                                hideOrShowInputZipCode,
+                                hideOrShowHelpZipCode));
+
+  countryCode.onValue(function(v){console.log("got a coutry code", v)})
 
   console.log("*** End country definition ***");
-}
-
-countryDefinitions();
+})();
