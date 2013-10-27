@@ -45,14 +45,16 @@ $( document ).ready(function() {
   // --
 
   // everything is hidden by default.
-  // stream will the shows or hides the differents components of the application
-  (function(){
+  // stream will provide events that will show or hide the different parts of the DOM
+  var hideEverything = function(){
     var hide = false;
     showOrHide(hide,$S.country);
     showOrHide(hide,$S.countryHelp);
     showOrHide(hide,$S.zipCode);
     showOrHide(hide,$S.zipCodeHelp);
-  })();
+  };
+
+  hideEverything();
 
 
 
@@ -109,11 +111,8 @@ $( document ).ready(function() {
     })
     .toProperty($S.zipCode.val()) // default value
     .filter(function(v){
-      console.log("filter",v);
       return v.length >= 2;
     });
-
-   inputZipCode.onValue(function(v){console.log("baeinga", v)})
 
   var ajaxZipCode = inputZipCode
     .combine(countryCode,function(zipCode,countryCode){
@@ -121,11 +120,14 @@ $( document ).ready(function() {
       return {partialZipCode:zipCode,countryCode:countryCode};
     })
     .flatMap(function(info){
-      Bacon.fromPromise($.ajax(URL.zipCodes(info)));
+      return Bacon.fromPromise($.ajax(URL.zipCodes(info)));
     })
     .mapError("ERROR");
 
-  ajaxZipCode.onValue(function(v){console.log("ajax zip code", v)})
+  var isErrorAjaxZipCode = ajaxZipCode
+    .map(isError)
+    .toProperty(false) // convertit en Property pour avoir une valeur initiale
+    .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
 
 
 
@@ -135,6 +137,8 @@ $( document ).ready(function() {
 
 
   var showOrHideErrorMessage = function(show) {
+    console.log("showOrHideErrorMessage", show);
+    hideEverything();
     showOrHide(show, $(".error"));
   };
 
@@ -206,7 +210,7 @@ $( document ).ready(function() {
 
   });
 
-  countryCode.onValue(function(v){console.log("got a coutry code", v)})
+  isErrorAjaxZipCode.onValue(showOrHideErrorMessage);
 
   console.log("*** End country definition ***");
 });
