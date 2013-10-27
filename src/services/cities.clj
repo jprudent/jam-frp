@@ -16,6 +16,6 @@
         not-nil))))
 
 (defn cities-by-zipcode
-  "a seq of french cities matching exactly zipcode"
-  [country-code zipcode]
-  (filter #(= zipcode (% 0)) (cities-all country-code)))
+  "a seq of french cities where zipcode starts with partial-zipcode"
+  [country-code partial-zipcode]
+  (filter #(.startsWith (% 0) partial-zipcode) (cities-all country-code)))

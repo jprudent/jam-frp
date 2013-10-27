@@ -4,7 +4,10 @@
 
   // Just an object to tidy up URLs
   var URL = {
-      'countries' : 'http://localhost:3000/countries'
+      countries : 'http://localhost:3000/countries',
+      zipCodes : function(info){
+        return 'http://localhost:3000/countries/' + info.countryCode + "/cities/" + info.partialZipCode;
+      }
   };
 
   var $S = {
@@ -13,7 +16,6 @@
     zipCode : $('input[name="zipCode"]'),
     zipCodeHelp : $("#help_zipCode")
   }
-
 
   // --
   // -- Définitions des event streams et properties
@@ -51,24 +53,44 @@
     })
     .toProperty($S.country.val()); // default value.
 
+
+  var findCountryCode = function(country,countries){
+    for(var countryCode in countries){
+         if(country === countries[countryCode]) return countryCode;
+      }
+    return null;
+  };
+
   var isInvalidCountry = inputCountry
     .combine(countriesList, function(input, countries){
-      for(var countryCode in countries){
-         if(input === countries[countryCode]) return false;
-      }
-      return true;
+      return findCountryCode(input,countries) === null;
     });
 
   var countryCode = inputCountry
-    .combine(countriesList, function(input,countries){
-      for(var countryCode in countries){
-         if(input === countries[countryCode]) return countryCode;
-      }
-      return null;
-    })
+    .combine(countriesList, findCountryCode)
     .filter(function(v){
       return v !== null;
     });
+
+  var inputZipCode = $S.zipCode.asEventStream("input")
+    .map(function(event){
+      return $(event.target).val();
+    })
+    .toProperty($S.zipCode.val()) // default value
+    .filter(function(v){
+      console.log("filter",v)
+      return v.length >= 2;
+    })
+    .combine(countryCode,function(zipCode,countryCode){
+      return {partialZipCode:zipCode,countryCode:countryCode};
+    })
+    .flatMap(function(info){
+      Bacon.fromPromise($.ajax(URL.zipCodes(info)));
+    })
+    .mapError("ERROR");
+
+  inputZipCode.onValue(function(v){console.log("baeinga", v)})
+
 
 
   // --
@@ -101,6 +123,7 @@
   };
 
   var showOrHideInputZipCode = function(show){
+    console.log("showOrHideInputZipCode", show);
     showOrHide(show, $S.zipCode);
     if(show){
       $S.zipCode.focus();

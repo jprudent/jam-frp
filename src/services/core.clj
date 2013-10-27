@@ -8,9 +8,9 @@
   'ring.middleware.file-info)
 
 (def api-documentation "Are you lost?
-/countries                          - récupérer la liste de tous les pays
-/countries/$country/cities/$zipcode - recherche des villes par code postal pour un pays donné
-/any-file                           - télécharger un des fichiers du répertoire resources/public")
+/countries                                  - récupérer la liste de tous les pays
+/countries/$country/cities/$partial-zipcode - recherche des villes par code postal partiel pour un pays donné
+/any-file                                   - télécharger un des fichiers du répertoire resources/public")
 
 (defn- err-404 [message]
   {:status 404
@@ -41,8 +41,8 @@
 
 (defn app-handler [request]
   (let [uri (:uri request)]
-    (java.lang.Thread/sleep 2000) ;lag on purpose, to see spiners on GUI
-    (if (should-fail?) err-500 ; random failure, shit happens!
+    (java.lang.Thread/sleep 2) ;lag on purpose, to see spiners on GUI
+    (if false err-500 ; random failure, shit happens!
       (route uri))))
 
 (def app (-> app-handler
