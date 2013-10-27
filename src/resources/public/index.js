@@ -18,7 +18,9 @@ $( document ).ready(function() {
     country : $('input[name="country"]'),
     countryHelp : $("#help_country"),
     zipCode : $('input[name="zipCode"]'),
-    zipCodeHelp : $("#help_zipCode")
+    zipCodeHelp : $("#help_zipCode"),
+    city : $('select[name="city"]'),
+    cityHelp : $("#help_city")
   }
 
 
@@ -33,6 +35,18 @@ $( document ).ready(function() {
   var not = function(f){
     return function(v){ return !f(v) };
   };
+
+  var and = function(f1,f2){
+    return function(v){
+      return f1(v) && f2(v);
+    }
+  }
+
+  var isTruthy = function(v){
+    return function(v){
+      return v == true;
+    }
+  }
 
   var showOrHide = function(show, selector){
     if(show) selector.show();
@@ -52,6 +66,8 @@ $( document ).ready(function() {
     showOrHide(hide,$S.countryHelp);
     showOrHide(hide,$S.zipCode);
     showOrHide(hide,$S.zipCodeHelp);
+    showOrHide(hide,$S.city);
+    showOrHide(hide,$S.cityHelp);
   };
 
   hideEverything();
@@ -129,6 +145,49 @@ $( document ).ready(function() {
     .toProperty(false) // convertit en Property pour avoir une valeur initiale
     .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
 
+  var citiesList = ajaxZipCode
+    .filter(and(not(isError),isTruthy));
+
+
+  var findCityByZipCode = function(zipCode, cities) {
+    for(var i=0; i<cities.length; i++){
+      var city = cities[i];
+      if(city[0] === zipCode) return city;
+    }
+    return null;
+  }
+
+  var findCityById = function(id, cities) {
+    for(var i=0; i<cities.length; i++){
+      var city = cities[i];
+      if(city[2] === id) return city;
+    }
+    return null;
+  }
+
+  var isInvalidZipCode = inputZipCode
+    .combine(citiesList, function(zipCode, cities){
+      return findCityByZipCode(zipCode, cities) === null;
+    });
+
+  var inputCity = $S.city.asEventStream("change")
+    .map(function(event){
+      return $(event.target).val();
+    })
+    .toProperty($S.zipCode.val());
+
+  var isInvalidCity = inputCity
+    .combine(citiesList, function(city, cities){
+      return findCityById(city, cities) === null;
+    });
+
+  var validCity = inputCity
+    .combine(citiesList, function(city, cities){
+      return findCityById(city, cities);
+    })
+    .filter(function(city){
+      return city !== null;
+    });
 
 
   // --
@@ -172,6 +231,7 @@ $( document ).ready(function() {
   };
 
   var showOrHideHelpZipCode = function(show){
+    console.log("hideOrShowHelpZipCode",show);
     showOrHide(show, $S.zipCodeHelp);
   };
 
@@ -190,6 +250,7 @@ $( document ).ready(function() {
     });
 
   var fillCountries = function(countries){
+    $("#countries").empty();
     for(var countryCode in countries){
       $("#countries").append('<option value="'+ countries[countryCode] +'"></option>');
     }
@@ -211,6 +272,51 @@ $( document ).ready(function() {
   });
 
   isErrorAjaxZipCode.onValue(showOrHideErrorMessage);
+
+  var fillCitiesList = function(cities){
+
+    var option = function(id,name){
+      return '<option value="'+ id +'">' + name + '</option>';
+    }
+
+    $S.city.empty();
+    $S.city.append(option("",">> - CITIES - <<"));
+
+    for(var i=0; i<cities.length;i++){
+      var city = cities[i];
+      var name = city[1];
+      var id = city[2];
+      $S.city.append(option(id,name));
+    }
+  };
+
+  var showOrHideInputCities = function(show){
+    console.log("showOrHideInputCities", show);
+    showOrHide(show, $S.city);
+    if(show){
+      $S.city.focus();
+    }
+  };
+
+  var showOrHideHelpCity = function(show){
+    console.log("showOrHideHelpCity",show);
+    showOrHide(show, $S.cityHelp);
+  };
+
+  citiesList.onValue(function(cities){
+    fillCitiesList(cities);
+    var show = true;
+    showOrHideInputCities(show);
+  });
+
+  isInvalidZipCode.onValue(showOrHideHelpZipCode);
+
+  isInvalidCity.onValue(showOrHideHelpCity);
+
+  validCity.onValue(function(city){
+      $S.zipCode.val(city[0]);
+      showOrHideHelpZipCode(false);
+  });
 
   console.log("*** End country definition ***");
 });
