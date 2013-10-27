@@ -41,7 +41,7 @@
 
 (defn app-handler [request]
   (let [uri (:uri request)]
-    (java.lang.Thread/sleep 2) ;lag on purpose, to see spiners on GUI
+    (java.lang.Thread/sleep 500) ;lag on purpose, to see spiners on GUI
     (if false err-500 ; random failure, shit happens!
       (route uri))))
 

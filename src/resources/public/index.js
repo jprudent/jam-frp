@@ -1,6 +1,10 @@
-(function() {
+$( document ).ready(function() {
 
   console.log("*** Strarting country definitions ***")
+
+  // --
+  // -- Constantes (url, dom, ...)
+  // --
 
   // Just an object to tidy up URLs
   var URL = {
@@ -17,12 +21,10 @@
     zipCodeHelp : $("#help_zipCode")
   }
 
-  // --
-  // -- Définitions des event streams et properties
-  // --
 
-  var ajaxCountries = Bacon.fromPromise($.ajax(URL.countries)) // creation d'un event stream à partir de la requête ajax
-    .mapError("ERROR"); // en cas d'erreur produit une string spéciale
+  // --
+  // -- utilitaires
+  // --
 
   var isError = function(v){
     return v === "ERROR";
@@ -31,6 +33,35 @@
   var not = function(f){
     return function(v){ return !f(v) };
   };
+
+  var showOrHide = function(show, selector){
+    if(show) selector.show();
+    else selector.hide();
+  };
+
+
+  // --
+  // -- initialisation
+  // --
+
+  // everything is hidden by default.
+  // stream will the shows or hides the differents components of the application
+  (function(){
+    var hide = false;
+    showOrHide(hide,$S.country);
+    showOrHide(hide,$S.countryHelp);
+    showOrHide(hide,$S.zipCode);
+    showOrHide(hide,$S.zipCodeHelp);
+  })();
+
+
+
+  // --
+  // -- Définitions des event streams et properties
+  // --
+
+  var ajaxCountries = Bacon.fromPromise($.ajax(URL.countries)) // creation d'un event stream à partir de la requête ajax
+    .mapError("ERROR"); // en cas d'erreur produit une string spéciale
 
   var isErrorAjaxCountries = ajaxCountries
     .map(isError)
@@ -78,10 +109,15 @@
     })
     .toProperty($S.zipCode.val()) // default value
     .filter(function(v){
-      console.log("filter",v)
+      console.log("filter",v);
       return v.length >= 2;
-    })
+    });
+
+   inputZipCode.onValue(function(v){console.log("baeinga", v)})
+
+  var ajaxZipCode = inputZipCode
     .combine(countryCode,function(zipCode,countryCode){
+      console.log("combining", zipCode, countryCode);
       return {partialZipCode:zipCode,countryCode:countryCode};
     })
     .flatMap(function(info){
@@ -89,7 +125,7 @@
     })
     .mapError("ERROR");
 
-  inputZipCode.onValue(function(v){console.log("baeinga", v)})
+  ajaxZipCode.onValue(function(v){console.log("ajax zip code", v)})
 
 
 
@@ -97,10 +133,6 @@
   // -- side effects
   // --
 
-  var showOrHide = function(show, selector){
-    if(show) selector.show();
-    else selector.hide();
-  };
 
   var showOrHideErrorMessage = function(show) {
     showOrHide(show, $(".error"));
@@ -119,6 +151,7 @@
   };
 
   var showOrHideHelpCountry = function(show){
+    console.log("showOrHideHelpCountry", show);
     showOrHide(show, $S.countryHelp);
   };
 
@@ -142,20 +175,15 @@
     showOrHideHelpZipCode(!hide);
   };
 
-  // take a variable number of one arg functions and construct a one arg function that calls all those functions
-  // used to bulk function in one
-  var doFn = function(){
-    var fns = arguments;
-    return function(value){
-      for(var i = 0; i<fns.length; i++){
-        fns[i](value);
-      }
-    }
-  };
-
   isDoneAjaxCountries
-    .onValue(doFn(showOrHideInputCountry, showOrHideHelpCountry,
-                  showOrHideInputZipCode, showOrHideHelpZipCode));
+    .onValue(function(done){
+
+      console.log("doneAjaxContry", done);
+
+      // once request is done, we can show country input
+      showOrHideInputCountry(done);
+
+    });
 
   var fillCountries = function(countries){
     for(var countryCode in countries){
@@ -165,11 +193,20 @@
 
   countriesList.onValue(fillCountries);
 
-  isInvalidCountry.onValue(doFn(showOrHideHelpCountry,
-                                hideOrShowInputZipCode,
-                                hideOrShowHelpZipCode));
+  isInvalidCountry
+    .onValue(function(isInvalid){
+
+      console.log("invalidContry",isInvalid);
+
+      // if country is invalid, show the help message
+      showOrHideHelpCountry(isInvalid);
+
+      // if country is invalid, hide the zipcode input
+      hideOrShowInputZipCode(isInvalid);
+
+  });
 
   countryCode.onValue(function(v){console.log("got a coutry code", v)})
 
   console.log("*** End country definition ***");
-})();
+});
