@@ -20,7 +20,7 @@
   {:status 500
    :body "ca faisait longtemps que tu n'avais pas eu d'erreur 500, ne t'inquiete pas, on ne t'a pas oublie :)"})
 
-(defn- should-fail? [] (= 0 (rand-int 4000)))
+(defn- should-fail? [] (= 0 (rand-int 4)))
 
 (def router
   "associate a function matcher for a uri with a function that takes the uri as parameter"

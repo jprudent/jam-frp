@@ -1,31 +1,23 @@
 $( document ).ready(function() {
 
-  console.log("*** Strarting country definitions ***")
-
   // --
   // -- Constantes (url, dom, ...)
   // --
 
-  // Just an object to tidy up URLs
+  // Un objet qui aggrège les URLs
   var URL = {
-      countries : 'http://localhost:3000/countries',
-      zipCodes : function(info){
-        return 'http://localhost:3000/countries/' + info.countryCode + "/cities/" + info.partialZipCode;
-      }
+      countries : 'http://localhost:3000/countries'
   };
 
+  // Des raccourcis pour séléctionner les éléments du DOM
   var $S = {
     country : $('input[name="country"]'),
-    countryHelp : $("#help_country"),
-    zipCode : $('input[name="zipCode"]'),
-    zipCodeHelp : $("#help_zipCode"),
-    city : $('select[name="city"]'),
-    cityHelp : $("#help_city")
+    countryHelp : $("#help_country")
   }
 
 
   // --
-  // -- utilitaires
+  // -- Utilitaires
   // --
 
   var isError = function(v){
@@ -35,18 +27,6 @@ $( document ).ready(function() {
   var not = function(f){
     return function(v){ return !f(v) };
   };
-
-  var and = function(f1,f2){
-    return function(v){
-      return f1(v) && f2(v);
-    }
-  }
-
-  var isTruthy = function(v){
-    return function(v){
-      return v == true;
-    }
-  }
 
   var showOrHide = function(show, selector){
     if(show) selector.show();
@@ -58,136 +38,66 @@ $( document ).ready(function() {
   // -- initialisation
   // --
 
-  // everything is hidden by default.
-  // stream will provide events that will show or hide the different parts of the DOM
+  // Tout est caché par défaut
+  // les streams fourniront les évènements qui déclencheront l'affichage des différentes parties du DOM
   var hideEverything = function(){
     var hide = false;
     showOrHide(hide,$S.country);
     showOrHide(hide,$S.countryHelp);
-    showOrHide(hide,$S.zipCode);
-    showOrHide(hide,$S.zipCodeHelp);
-    showOrHide(hide,$S.city);
-    showOrHide(hide,$S.cityHelp);
   };
 
   hideEverything();
-
 
 
   // --
   // -- Définitions des event streams et properties
   // --
 
-  var ajaxCountries = Bacon.fromPromise($.ajax(URL.countries)) // creation d'un event stream à partir de la requête ajax
-    .mapError("ERROR"); // en cas d'erreur produit une string spéciale
+  /**
+   * EventStream encapsulant la requête Ajax de récupération de la liste des pays.
+   * Les valeurs possibles sont :
+   * - "Error"
+   * - la liste des pays
+   */
+  var ajaxCountries = Bacon.fromPromise($.ajax(URL.countries))
+    .mapError("ERROR"); // en cas d'erreur, la valeur "ERROR" est produite
 
+  /**
+   * Property représentant l'échec ou le succès de la requête Ajax de récupération de la liste des pays.
+   * Les valeurs possibles sont :
+   * - true si l'appel ajax est en erreur
+   * - false si l'appel ajax est OK
+   */
   var isErrorAjaxCountries = ajaxCountries
     .map(isError)
     .toProperty(false) // convertit en Property pour avoir une valeur initiale
     .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
 
-  var isOngoingAjaxCountries = isErrorAjaxCountries.awaiting(ajaxCountries);
+  /**
+   * Property représentant l'état en cours de la requête Ajax de récupération de la liste des pays.
+   * Les valeurs possibles sont :
+   * - true si la requête est en cours
+   * - false si la requête n'a pas commencée ou si elle est terminée
+   */
+  var isOngoingAjaxCountries = isErrorAjaxCountries.awaiting(ajaxCountries); // vaut true le temps que la liste des pays soit téléchargée
 
+  /**
+   * Property représentant l'état terminé de la requête Ajax de récupération de la liste des pays.
+   * Les valeurs possibles sont :
+   * - true si la requête est terminée avec succès
+   * - false dans tous les autres cas
+   */
   var isDoneAjaxCountries = ajaxCountries
     .map(not(isError))
-    .toProperty(false)
+    .toProperty(false) //
     .skipDuplicates();
 
+  /**
+   * EventStream représentant la liste des pays.
+   * La seule valeur possible est la liste des pays.
+   */
   var countriesList = ajaxCountries
     .filter(not(isError));
-
-  var inputCountry = $S.country.asEventStream("input")
-    .map(function(event){
-      return $(event.target).val();
-    })
-    .toProperty($S.country.val()); // default value.
-
-
-  var findCountryCode = function(country,countries){
-    for(var countryCode in countries){
-         if(country === countries[countryCode]) return countryCode;
-      }
-    return null;
-  };
-
-  var isInvalidCountry = inputCountry
-    .combine(countriesList, function(input, countries){
-      return findCountryCode(input,countries) === null;
-    });
-
-  var countryCode = inputCountry
-    .combine(countriesList, findCountryCode)
-    .filter(function(v){
-      return v !== null;
-    });
-
-  var inputZipCode = $S.zipCode.asEventStream("input")
-    .map(function(event){
-      return $(event.target).val();
-    })
-    .toProperty($S.zipCode.val()) // default value
-    .filter(function(v){
-      return v.length >= 2;
-    });
-
-  var ajaxZipCode = inputZipCode
-    .combine(countryCode,function(zipCode,countryCode){
-      console.log("combining", zipCode, countryCode);
-      return {partialZipCode:zipCode,countryCode:countryCode};
-    })
-    .flatMap(function(info){
-      return Bacon.fromPromise($.ajax(URL.zipCodes(info)));
-    })
-    .mapError("ERROR");
-
-  var isErrorAjaxZipCode = ajaxZipCode
-    .map(isError)
-    .toProperty(false) // convertit en Property pour avoir une valeur initiale
-    .skipDuplicates(); // si la Property vaut 2 fois false, inutile de cacher 2 fois le message d'erreur
-
-  var citiesList = ajaxZipCode
-    .filter(and(not(isError),isTruthy));
-
-
-  var findCityByZipCode = function(zipCode, cities) {
-    for(var i=0; i<cities.length; i++){
-      var city = cities[i];
-      if(city[0] === zipCode) return city;
-    }
-    return null;
-  }
-
-  var findCityById = function(id, cities) {
-    for(var i=0; i<cities.length; i++){
-      var city = cities[i];
-      if(city[2] === id) return city;
-    }
-    return null;
-  }
-
-  var isInvalidZipCode = inputZipCode
-    .combine(citiesList, function(zipCode, cities){
-      return findCityByZipCode(zipCode, cities) === null;
-    });
-
-  var inputCity = $S.city.asEventStream("change")
-    .map(function(event){
-      return $(event.target).val();
-    })
-    .toProperty($S.zipCode.val());
-
-  var isInvalidCity = inputCity
-    .combine(citiesList, function(city, cities){
-      return findCityById(city, cities) === null;
-    });
-
-  var validCity = inputCity
-    .combine(citiesList, function(city, cities){
-      return findCityById(city, cities);
-    })
-    .filter(function(city){
-      return city !== null;
-    });
 
 
   // --
@@ -203,51 +113,28 @@ $( document ).ready(function() {
 
   isErrorAjaxCountries.onValue(showOrHideErrorMessage);
 
+
+
   var showOrHideSpinner = function(show) {
     showOrHide(show, $(".spinner"));
   };
 
   isOngoingAjaxCountries.onValue(showOrHideSpinner);
 
+
+
   var showOrHideInputCountry = function(show){
     showOrHide(show, $S.country);
   };
 
-  var showOrHideHelpCountry = function(show){
-    console.log("showOrHideHelpCountry", show);
-    showOrHide(show, $S.countryHelp);
-  };
-
-  var showOrHideInputZipCode = function(show){
-    console.log("showOrHideInputZipCode", show);
-    showOrHide(show, $S.zipCode);
-    if(show){
-      $S.zipCode.focus();
-    }
-  };
-
-  var hideOrShowInputZipCode = function(hide){
-    showOrHideInputZipCode(!hide);
-  };
-
-  var showOrHideHelpZipCode = function(show){
-    console.log("hideOrShowHelpZipCode",show);
-    showOrHide(show, $S.zipCodeHelp);
-  };
-
-  var hideOrShowHelpZipCode = function(hide){
-    showOrHideHelpZipCode(!hide);
-  };
-
-  isDoneAjaxCountries
-    .onValue(function(done){
+  isDoneAjaxCountries.onValue(function(done){
 
       console.log("doneAjaxContry", done);
 
       // once request is done, we can show country input
       showOrHideInputCountry(done);
 
-    });
+  });
 
   var fillCountries = function(countries){
     $("#countries").empty();
@@ -258,65 +145,4 @@ $( document ).ready(function() {
 
   countriesList.onValue(fillCountries);
 
-  isInvalidCountry
-    .onValue(function(isInvalid){
-
-      console.log("invalidContry",isInvalid);
-
-      // if country is invalid, show the help message
-      showOrHideHelpCountry(isInvalid);
-
-      // if country is invalid, hide the zipcode input
-      hideOrShowInputZipCode(isInvalid);
-
-  });
-
-  isErrorAjaxZipCode.onValue(showOrHideErrorMessage);
-
-  var fillCitiesList = function(cities){
-
-    var option = function(id,name){
-      return '<option value="'+ id +'">' + name + '</option>';
-    }
-
-    $S.city.empty();
-    $S.city.append(option("",">> - CITIES - <<"));
-
-    for(var i=0; i<cities.length;i++){
-      var city = cities[i];
-      var name = city[1];
-      var id = city[2];
-      $S.city.append(option(id,name));
-    }
-  };
-
-  var showOrHideInputCities = function(show){
-    console.log("showOrHideInputCities", show);
-    showOrHide(show, $S.city);
-    if(show){
-      $S.city.focus();
-    }
-  };
-
-  var showOrHideHelpCity = function(show){
-    console.log("showOrHideHelpCity",show);
-    showOrHide(show, $S.cityHelp);
-  };
-
-  citiesList.onValue(function(cities){
-    fillCitiesList(cities);
-    var show = true;
-    showOrHideInputCities(show);
-  });
-
-  isInvalidZipCode.onValue(showOrHideHelpZipCode);
-
-  isInvalidCity.onValue(showOrHideHelpCity);
-
-  validCity.onValue(function(city){
-      $S.zipCode.val(city[0]);
-      showOrHideHelpZipCode(false);
-  });
-
-  console.log("*** End country definition ***");
 });
