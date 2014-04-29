@@ -1,5 +1,6 @@
 (ns services.core
-  (:require services.countries services.cities))
+  (:require services.countries services.cities [ring.adapter.jetty :as jetty])
+  (:gen-class))
 
 ;;todo cleanup use
 (use 'ring.middleware.json
@@ -49,3 +50,6 @@
            wrap-json-response
            (wrap-resource "resources/public")
            (wrap-file-info)))
+
+(defn -main [port]
+  (jetty/run-jetty app {:port (Integer. port) :join? false}))

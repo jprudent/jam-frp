@@ -6,4 +6,6 @@
                  [ring/ring-jetty-adapter "1.2.0"]
                  [ring/ring-json "0.2.0"]]
   :plugins [[lein-ring "0.8.7"]]
-  :ring {:handler services.core/app})
+  :ring {:handler services.core/app}
+  :main services.core
+  :aot [services.core])
