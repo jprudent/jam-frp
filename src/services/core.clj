@@ -1,6 +1,5 @@
 (ns services.core
-  (:require services.countries services.cities [ring.adapter.jetty :as jetty])
-  (:gen-class))
+  (:require services.countries services.cities [ring.adapter.jetty :as jetty]))
 
 ;;todo cleanup use
 (use 'ring.middleware.json

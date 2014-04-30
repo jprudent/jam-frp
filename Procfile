@@ -1,3 +1,1 @@
-web: java $JVM_OPTS -jar target/jam_frp-0.0.1-SNAPSHOT-standalone.jar $PORT
-
-
+web: java $JVM_OPTS -cp target/frp-standalone.jar clojure.main -m services.core $PORT
