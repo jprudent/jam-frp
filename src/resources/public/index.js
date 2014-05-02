@@ -6,7 +6,7 @@ $( document ).ready(function() {
 
   // Un objet qui aggrège les URLs
   var URL = {
-      countries : 'http://localhost:3000/countries'
+      countries : '/countries'
   };
 
   // Des raccourcis pour séléctionner les éléments du DOM
